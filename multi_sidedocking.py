@@ -430,6 +430,24 @@ class Cal_Rudder_Engine:
         )
 
         # 定義系統矩陣
+        A = np.array([[0.9521, 0.0479], [1, 0]])  # 狀態轉移矩陣 A
+        B = np.array([[-0.2043], [0]])  # 輸入矩陣 B
+        # 根據距離動態調整 Q 和 R（權重矩陣）
+        if distance >= 350:
+            Q = np.array([[50, 0], [0, 1]])  # 遠距離，強調yaw_error修正
+            R = np.array([[15]])
+        elif 350 > distance >= 200:
+            Q = np.array([[20, 0], [0, 1]])  # 中距離，中等調整
+            R = np.array([[20]])
+        else:
+            Q = np.array([[5, 0], [0, 1]])  # 近距離，平穩控制
+            R = np.array([[27]])
+        # # 調整權重矩陣
+        # Q = np.array(
+        #     [[5, 0], [0, 1]]  # 增加 yaw_error 的權重，減少過度響應
+        # )  # 狀態權重矩陣 Q，控制誤差的重要性
+        # R = np.array([[23]])  # 增加 R 的值，減少控制輸入的幅度
+
         # 求解離散型 Riccati 方程以得到矩陣 P
         P = scipy.linalg.solve_discrete_are(A, B, Q, R)
 
@@ -645,6 +663,19 @@ def main_multi(goal_list, loop=False):
                 rudder_calc = int(max(min(rudder_calc, 25), -25))
                 pre_rudder = new_rudder
 
+                # 加入 Ouster 判斷：最後一個點時如果距離過近自動停止
+                if final_point and ouster_front is not None and ouster_front <= 9.2:
+                    print("Ouster 偵測到前方障礙物，停止靠泊")
+                    ouster_event.clear()  # 停止 Ouster 執行緒
+                    DataTransmitter("stop")
+                    time.sleep(5)
+                    DataTransmitter("left_back")
+                    time.sleep(18)
+                    DataTransmitter("stop")
+                    time.sleep(2)
+                    final_point = False
+                    break
+                print(f"Ouster:{ouster_front}")
                 if (
                     rudder_calc == 0
                     and target_lat == 0

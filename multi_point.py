@@ -412,6 +412,16 @@ class Cal_Rudder_Engine:
         delta_value_limited = None
 
         # 定義系統矩陣
+        A = np.array([[0.9521, 0.0479], [1, 0]])  # 狀態轉移矩陣 A
+        B = np.array([[-0.2043], [0]])  # 輸入矩陣 B
+
+        # 調整權重矩陣
+        Q = np.array(
+            [[5, 0], [0, 1]]  # 增加 yaw_error 的權重，減少過度響應
+        )  # 狀態權重矩陣 Q，控制誤差的重要性
+        R = np.array([[23]])  # 增加 R 的值，減少控制輸入的幅度
+
+        # 求解離散型 Riccati 方程以得到矩陣 P
         P = scipy.linalg.solve_discrete_are(A, B, Q, R)
 
         # 計算最優增益矩陣 K
